@@ -13,8 +13,5 @@ export async function GET(req) {
     body: JSON.stringify({ code }),
   });
 
-  return Response.redirect(
-  `${process.env.NEXT_PUBLIC_FRONTEND_URL}?connected=true`
-);
-
+  return Response.redirect("http://localhost:3000?connected=true");
 }
