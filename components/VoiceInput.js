@@ -1,11 +1,30 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
-export default function VoiceInput({ onResult, isLoading = false }) {
+export default function VoiceInput({ onResult, isLoading = false, isSpeaking = false, autoStart = false }) {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState(null);
   const recognitionRef = useRef(null);
+
+  // Automatic restart logic for Live Mode
+  useEffect(() => {
+    if (autoStart && !listening && !isLoading && !isSpeaking) {
+      const timer = setTimeout(() => {
+        if (autoStart && !listening && !isLoading && !isSpeaking) {
+          startListening();
+        }
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [autoStart, listening, isLoading, isSpeaking]);
+
+  // Stop listening if AI starts speaking
+  useEffect(() => {
+    if (isSpeaking && listening) {
+      stopListening();
+    }
+  }, [isSpeaking, listening]);
 
   const startListening = () => {
     setError(null);
@@ -57,16 +76,21 @@ export default function VoiceInput({ onResult, isLoading = false }) {
     };
 
     try {
+      if (isSpeaking) {
+        console.log("🤫 Rohit is speaking, delaying recognition...");
+        return;
+      }
       recognition.start();
     } catch (err) {
-      setError("Could not start speech recognition");
-      console.error(err);
+      // recognition already started or other error
     }
   };
 
   const stopListening = () => {
     if (recognitionRef.current) {
-      recognitionRef.current.stop();
+      try {
+        recognitionRef.current.stop();
+      } catch (e) { }
       setListening(false);
     }
   };
@@ -83,11 +107,11 @@ export default function VoiceInput({ onResult, isLoading = false }) {
         {/* Inner Pulsing Core */}
         <button
           onClick={listening ? stopListening : startListening}
-          disabled={isLoading}
+          disabled={isLoading || isSpeaking}
           className={`relative z-10 w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500 overflow-hidden
             ${listening
               ? "bg-red-500/20 border-2 border-red-500 shadow-[0_0_30px_rgba(239,68,68,0.5)] scale-110"
-              : isLoading
+              : isLoading || isSpeaking
                 ? "bg-gray-800 border-2 border-gray-600 cursor-wait"
                 : "bg-jarvis-blue/10 border-2 border-jarvis-blue shadow-[0_0_20px_rgba(14,165,233,0.3)] hover:scale-105"
             }`}
@@ -96,7 +120,7 @@ export default function VoiceInput({ onResult, isLoading = false }) {
           {listening && <div className="absolute inset-0 bg-red-500/10 animate-pulse"></div>}
 
           <div className="flex flex-col items-center">
-            {isLoading ? (
+            {isLoading || isSpeaking ? (
               <div className="flex gap-1">
                 <div className="w-1.5 h-1.5 bg-jarvis-blue rounded-full animate-bounce"></div>
                 <div className="w-1.5 h-1.5 bg-jarvis-blue rounded-full animate-bounce [animation-delay:-0.15s]"></div>
@@ -112,14 +136,14 @@ export default function VoiceInput({ onResult, isLoading = false }) {
 
         {/* Decorative Elements */}
         <div className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-widest text-jarvis-blue/60 font-mono">
-          System Status: {isLoading ? 'Processing' : listening ? 'Listening' : 'Ready'}
+          System Status: {isLoading ? 'Analyzing' : isSpeaking ? 'Transmitting' : listening ? 'Receiving' : 'Standby'}
         </div>
       </div>
 
       <div className="text-center">
         <p className={`text-sm tracking-[0.2em] uppercase font-semibold transition-colors
           ${listening ? 'text-red-400' : 'text-jarvis-blue/80'}`}>
-          {isLoading ? "Analyzing voice patterns..." : listening ? "Receiving Transmission..." : "Initialize Command"}
+          {isLoading ? "Analyzing voice patterns..." : isSpeaking ? "Transmitting Response..." : listening ? "Receiving Transmission..." : "Initialize Command"}
         </p>
         {error && <p className="text-red-500 text-xs mt-2 font-mono">[{error}]</p>}
       </div>

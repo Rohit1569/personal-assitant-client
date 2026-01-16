@@ -13,6 +13,8 @@ export default function VoiceAssistant() {
   const [userId, setUserId] = useState("user123");
   const [showHistory, setShowHistory] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [liveMode, setLiveMode] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   useEffect(() => {
     const storedUserId = localStorage.getItem("userId");
@@ -79,7 +81,12 @@ export default function VoiceAssistant() {
       };
       setHistory([historyEntry, ...history]);
 
-      speakResponse(responseMessage);
+      // If in live mode, stay in live mode loop
+      speakResponse(responseMessage, () => {
+        if (liveMode) {
+          // The VoiceInput component will handle the listening state
+        }
+      });
     } catch (error) {
       console.error("Error:", error);
       const errorMessage = `Sorry, I encountered an error: ${error.message}`;
@@ -98,14 +105,34 @@ export default function VoiceAssistant() {
     }
   };
 
-  const speakResponse = (msg) => {
+  const speakResponse = (msg, onEndCallback) => {
     if ("speechSynthesis" in window) {
       speechSynthesis.cancel();
+      setIsSpeaking(true);
       const utterance = new SpeechSynthesisUtterance(msg);
       utterance.rate = 1.0;
-      utterance.pitch = 0.9; // Slightly lower pitch for more "AI" feel
+      utterance.pitch = 0.9;
       utterance.volume = 1;
+
+      utterance.onend = () => {
+        setIsSpeaking(false);
+        if (onEndCallback) onEndCallback();
+      };
+
       speechSynthesis.speak(utterance);
+    }
+  };
+
+  const toggleLiveMode = () => {
+    if (liveMode) {
+      speechSynthesis.cancel();
+      setLiveMode(false);
+    } else {
+      if (!authenticated) {
+        alert("Please login first to establish a live link.");
+        return;
+      }
+      setLiveMode(true);
     }
   };
 
@@ -136,11 +163,22 @@ export default function VoiceAssistant() {
           </div>
           <div className="flex flex-col items-end gap-2">
             <AuthButton />
-            <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${authenticated ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-              <span className="text-[10px] font-mono uppercase text-jarvis-blue/40 tracking-widest">
-                {authenticated ? 'Uplink Stable' : 'Uplink Offline'}
-              </span>
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${authenticated ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                <span className="text-[10px] font-mono uppercase text-jarvis-blue/40 tracking-widest">
+                  {authenticated ? 'Uplink Stable' : 'Uplink Offline'}
+                </span>
+              </div>
+              <button
+                onClick={toggleLiveMode}
+                className={`text-[10px] font-mono uppercase tracking-[0.2em] px-2 py-1 border transition-all duration-300 ${liveMode
+                    ? 'bg-jarvis-blue/20 border-jarvis-blue text-jarvis-blue glow-blue'
+                    : 'bg-transparent border-jarvis-blue/20 text-jarvis-blue/40 hover:border-jarvis-blue/60'
+                  }`}
+              >
+                {liveMode ? '● LIVE SESSION ACTIVE' : '■ INITIATE LIVE LINK'}
+              </button>
             </div>
           </div>
         </header>
@@ -165,7 +203,12 @@ export default function VoiceAssistant() {
                 />
               </div> */}
 
-              <VoiceInput onResult={handleResult} isLoading={isLoading} />
+              <VoiceInput
+                onResult={handleResult}
+                isLoading={isLoading}
+                isSpeaking={isSpeaking}
+                autoStart={liveMode}
+              />
 
               {/* Live Transcript Display */}
               <div className="w-full max-w-xl mt-8 h-20 flex flex-col items-center justify-center">
