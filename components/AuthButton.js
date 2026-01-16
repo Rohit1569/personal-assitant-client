@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getGoogleAuthUrl, isAuthenticated, logout } from "../lib/googleAuth";
+import { isAuthenticated, logout } from "../lib/googleAuth";
 
 export default function AuthButton() {
   const [authenticated, setAuthenticated] = useState(false);
@@ -13,7 +13,6 @@ export default function AuthButton() {
   }, []);
 
   const handleLogin = () => {
-    // Redirect to backend OAuth initiation endpoint
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
     window.location.href = `${backendUrl}/auth/google`;
   };
@@ -25,8 +24,8 @@ export default function AuthButton() {
 
   if (loading) {
     return (
-      <button disabled className="px-4 py-2 bg-gray-300 text-gray-600 rounded-lg">
-        Loading...
+      <button disabled className="px-6 py-2 border border-jarvis-blue/20 text-jarvis-blue/40 font-mono text-xs uppercase tracking-widest">
+        Syncing...
       </button>
     );
   }
@@ -35,9 +34,9 @@ export default function AuthButton() {
     return (
       <button
         onClick={handleLogout}
-        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition"
+        className="px-6 py-2 border border-red-500/50 hover:bg-red-500/10 text-red-400 font-mono text-xs uppercase tracking-widest transition-all duration-300"
       >
-        📍 Logout
+        [ Terminate Uplink ]
       </button>
     );
   }
@@ -45,9 +44,9 @@ export default function AuthButton() {
   return (
     <button
       onClick={handleLogin}
-      className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition"
+      className="px-6 py-2 border border-jarvis-blue hover:bg-jarvis-blue/10 text-jarvis-blue font-mono text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_0_15px_rgba(14,165,233,0.2)]"
     >
-      🔐 Login with Google
+      [ Initialize Uplink ]
     </button>
   );
 }

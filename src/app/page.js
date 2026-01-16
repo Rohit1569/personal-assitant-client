@@ -15,25 +15,19 @@ export default function VoiceAssistant() {
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Load user ID from localStorage if available
     const storedUserId = localStorage.getItem("userId");
     if (storedUserId) {
       setUserId(storedUserId);
     }
 
-    // Check if authenticated
     const checkAuth = () => {
-      console.log("🔍 Checking authentication status...");
       const isAuth = isAuthenticated();
-      console.log("✅ Authenticated:", isAuth);
       setAuthenticated(isAuth);
     };
-    
+
     checkAuth();
 
-    // Listen for storage changes (login/logout from other tabs)
     const handleStorageChange = () => {
-      console.log("📝 Storage changed, re-checking auth...");
       checkAuth();
     };
 
@@ -42,7 +36,6 @@ export default function VoiceAssistant() {
   }, []);
 
   const handleResult = async (text) => {
-    // Check authentication
     if (!isAuthenticated()) {
       alert("Please login with Google first to use voice commands");
       return;
@@ -53,19 +46,8 @@ export default function VoiceAssistant() {
     setIsLoading(true);
 
     try {
-      // Get valid access token
-      console.log("🎤 Getting access token for voice command...");
       const accessToken = await getAccessToken();
-      console.log("✅ Got access token:", accessToken ? `${accessToken.substring(0, 20)}...` : "UNDEFINED");
-
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:4000";
-
-      console.log("📤 Sending to backend:", {
-        url: `${backendUrl}/voice`,
-        headers: {
-          "Authorization": `Bearer ${accessToken ? accessToken.substring(0, 20) : "UNDEFINED"}...`,
-        }
-      });
 
       const res = await fetch(`${backendUrl}/voice`, {
         method: "POST",
@@ -89,7 +71,6 @@ export default function VoiceAssistant() {
 
       setResponse(responseMessage);
 
-      // Add to history
       const historyEntry = {
         id: Date.now(),
         command: text,
@@ -98,7 +79,6 @@ export default function VoiceAssistant() {
       };
       setHistory([historyEntry, ...history]);
 
-      // Speak the response
       speakResponse(responseMessage);
     } catch (error) {
       console.error("Error:", error);
@@ -120,12 +100,10 @@ export default function VoiceAssistant() {
 
   const speakResponse = (msg) => {
     if ("speechSynthesis" in window) {
-      // Cancel any ongoing speech
       speechSynthesis.cancel();
-
       const utterance = new SpeechSynthesisUtterance(msg);
-      utterance.rate = 0.9;
-      utterance.pitch = 1;
+      utterance.rate = 1.0;
+      utterance.pitch = 0.9; // Slightly lower pitch for more "AI" feel
       utterance.volume = 1;
       speechSynthesis.speak(utterance);
     }
@@ -136,128 +114,166 @@ export default function VoiceAssistant() {
   };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <div className="max-w-2xl mx-auto">
-        {/* Header with Auth */}
-        <div className="flex justify-between items-center mb-12">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-800 mb-2">🎯 Voice Assistant</h1>
-            <p className="text-gray-600">Send emails and schedule meetings with voice commands</p>
-          </div>
-          <AuthButton />
-        </div>
+    <main className="min-h-screen p-6 md:p-12 relative overflow-hidden">
+      {/* Background HUD elements */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
+        <div className="absolute top-10 left-10 w-32 h-32 border-l-2 border-t-2 border-jarvis-blue"></div>
+        <div className="absolute top-10 right-10 w-32 h-32 border-r-2 border-t-2 border-jarvis-blue"></div>
+        <div className="absolute bottom-10 left-10 w-32 h-32 border-l-2 border-b-2 border-jarvis-blue"></div>
+        <div className="absolute bottom-10 right-10 w-32 h-32 border-r-2 border-b-2 border-jarvis-blue"></div>
+      </div>
 
-        {/* Auth Status Alert */}
-        {!authenticated && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-            <p className="text-yellow-800 font-semibold">⚠️ Please login with Google first</p>
-            <p className="text-yellow-700 text-sm">Click the "Login with Google" button to authenticate</p>
+      <div className="max-w-4xl mx-auto relative z-10">
+        {/* Header */}
+        <header className="flex justify-between items-start mb-16">
+          <div className="space-y-1">
+            <h1 className="text-5xl font-bold tracking-tighter text-jarvis-blue glow-blue italic uppercase">
+              Personal Assistant.
+            </h1>
+            <p className="text-xs font-mono text-jarvis-blue/60 tracking-[0.3em] uppercase">
+              Just A Rather Very Intelligent System
+            </p>
           </div>
-        )}
-
-        {/* Main Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 mb-6">
-          {/* User ID */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">User ID</label>
-            <input
-              type="text"
-              value={userId}
-              onChange={(e) => {
-                setUserId(e.target.value);
-                localStorage.setItem("userId", e.target.value);
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Enter your user ID"
-            />
-          </div>
-
-          {/* Voice Input */}
-          <div className="text-center mb-8">
-            <VoiceInput onResult={handleResult} isLoading={isLoading} />
-          </div>
-
-          {/* Transcript */}
-          {transcript && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-gray-600 mb-1">You said:</p>
-              <p className="text-lg text-gray-800">{transcript}</p>
+          <div className="flex flex-col items-end gap-2">
+            <AuthButton />
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${authenticated ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+              <span className="text-[10px] font-mono uppercase text-jarvis-blue/40 tracking-widest">
+                {authenticated ? 'Uplink Stable' : 'Uplink Offline'}
+              </span>
             </div>
-          )}
-
-          {/* Response */}
-          {response && (
-            <div
-              className={`border rounded-lg p-4 mb-6 ${
-                response.includes("✅")
-                  ? "bg-green-50 border-green-200"
-                  : "bg-red-50 border-red-200"
-              }`}
-            >
-              <p className="text-sm text-gray-600 mb-1">Response:</p>
-              <p className="text-lg text-gray-800">{response}</p>
-            </div>
-          )}
-
-          {/* Loading Indicator */}
-          {isLoading && (
-            <div className="flex justify-center items-center gap-2 mb-6">
-              <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
-              <div
-                className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
-                style={{ animationDelay: "0.1s" }}
-              ></div>
-              <div
-                className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
-                style={{ animationDelay: "0.2s" }}
-              ></div>
-            </div>
-          )}
-
-          {/* Quick Help */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm font-semibold text-gray-700 mb-2">💡 Try saying:</p>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• "Send an email to john@example.com saying hello"</li>
-              <li>• "Schedule a meeting tomorrow at 2 PM"</li>
-              <li>• "Create an event called team standup at 10 AM"</li>
-            </ul>
           </div>
-        </div>
+        </header>
 
-        {/* History Section */}
-        {history.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">📋 History</h2>
-              <button
-                onClick={() => setShowHistory(!showHistory)}
-                className="text-blue-500 hover:text-blue-700 text-sm font-semibold"
-              >
-                {showHistory ? "Hide" : "Show"}
-              </button>
-            </div>
+        {/* Main Interface Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
 
-            {showHistory && (
-              <div className="space-y-3">
-                {history.map((entry) => (
-                  <div key={entry.id} className="border-l-4 border-blue-500 pl-4 py-2">
-                    <p className="text-xs text-gray-500">{entry.timestamp}</p>
-                    <p className="text-sm font-medium text-gray-700 mt-1">Command: {entry.command}</p>
-                    <p className="text-sm text-gray-600 mt-1">Result: {entry.response}</p>
+          {/* Left Column: Input & Status */}
+          <div className="lg:col-span-12 xl:col-span-12 flex flex-col items-center">
+            <div className="w-full jarvis-border p-12 mb-8 flex flex-col items-center justify-center min-h-[400px]">
+              {/* User ID Input - Hover HUD style */}
+              {/* <div className="absolute top-4 left-4 flex flex-col gap-1">
+                <span className="text-[10px] font-mono text-jarvis-blue/40 uppercase">User Identification</span>
+                <input
+                  type="text"
+                  value={userId}
+                  onChange={(e) => {
+                    setUserId(e.target.value);
+                    localStorage.setItem("userId", e.target.value);
+                  }}
+                  className="bg-transparent border-b border-jarvis-blue/20 text-jarvis-blue font-mono text-sm focus:outline-none focus:border-jarvis-blue transition-colors"
+                />
+              </div> */}
+
+              <VoiceInput onResult={handleResult} isLoading={isLoading} />
+
+              {/* Live Transcript Display */}
+              <div className="w-full max-w-xl mt-8 h-20 flex flex-col items-center justify-center">
+                {transcript && (
+                  <div className="text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <p className="text-[10px] font-mono text-jarvis-blue/40 uppercase mb-2 tracking-widest">Voice Decrypted</p>
+                    <p className="text-xl text-foreground font-medium italic">"{transcript}"</p>
                   </div>
-                ))}
-                <button
-                  onClick={clearHistory}
-                  className="mt-4 w-full px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-semibold transition"
-                >
-                  Clear History
-                </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Response Panel */}
+          {response && (
+            <div className="lg:col-span-12 animate-in zoom-in-95 duration-300">
+              <div className={`jarvis-border p-8 border-l-4 ${response.includes("✅") ? 'border-l-jarvis-blue' : 'border-l-red-500'}`}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`w-2 h-2 rounded-full ${response.includes("✅") ? 'bg-jarvis-blue' : 'bg-red-500'} animate-ping`}></div>
+                  <h3 className="text-xs font-mono uppercase tracking-[0.2em] text-jarvis-blue/60">System Response</h3>
+                </div>
+                <p className="text-2xl font-light text-foreground leading-relaxed">
+                  {response}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Secondary Info Rows */}
+          <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Quick Command Reference */}
+            <div className="jarvis-border p-6">
+              <h3 className="text-xs font-mono uppercase tracking-[0.2em] text-jarvis-blue/60 mb-4 flex items-center gap-2">
+                <span className="w-4 h-[1px] bg-jarvis-blue/40"></span> Command Protocols
+              </h3>
+              <ul className="space-y-2 font-mono text-xs text-jarvis-blue/80">
+                <li className="flex gap-3 hover:text-jarvis-blue cursor-default transition-colors">
+                  <span className="text-jarvis-blue opacity-50">01</span>
+                  "Send an email to [Name] regarding [Subject]"
+                </li>
+                <li className="flex gap-3 hover:text-jarvis-blue cursor-default transition-colors">
+                  <span className="text-jarvis-blue opacity-50">02</span>
+                  "Schedule a meeting at [Time] for [Purpose]"
+                </li>
+                <li className="flex gap-3 hover:text-jarvis-blue cursor-default transition-colors">
+                  <span className="text-jarvis-blue opacity-50">03</span>
+                  "Cancel my appointment with [Name]"
+                </li>
+              </ul>
+            </div>
+
+            {/* History Feed */}
+            {history.length > 0 && (
+              <div className="jarvis-border p-6 overflow-hidden max-h-[300px] flex flex-col">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xs font-mono uppercase tracking-[0.2em] text-jarvis-blue/60 flex items-center gap-2">
+                    <span className="w-4 h-[1px] bg-jarvis-blue/40"></span> Mission Logs
+                  </h3>
+                  <button
+                    onClick={clearHistory}
+                    className="text-[10px] font-mono text-red-400/60 uppercase hover:text-red-400 transition-colors"
+                  >
+                    Purge
+                  </button>
+                </div>
+                <div className="space-y-4 overflow-y-auto pr-2 custom-scrollbar">
+                  {history.map((entry) => (
+                    <div key={entry.id} className="border-l border-jarvis-blue/20 pl-3 py-1 group">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[9px] font-mono text-jarvis-blue/30">{entry.timestamp}</span>
+                        <span className="text-[9px] font-mono text-jarvis-blue/30 uppercase opacity-0 group-hover:opacity-100 transition-opacity">Executed</span>
+                      </div>
+                      <p className="text-xs font-medium text-jarvis-blue/90 line-clamp-1">{entry.command}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-        )}
+        </div>
+
+        {/* Footer Stats */}
+        <footer className="mt-16 pt-8 border-t border-jarvis-blue/10 flex justify-between items-end">
+          <div className="flex gap-12">
+            <div className="space-y-1">
+              <p className="text-[9px] font-mono text-jarvis-blue/40 uppercase tracking-widest">Core Temp</p>
+              <p className="text-sm font-mono text-jarvis-blue animate-[data-flow_2s_infinite]">32°C [STABLE]</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[9px] font-mono text-jarvis-blue/40 uppercase tracking-widest">Neural Link</p>
+              <p className="text-sm font-mono text-jarvis-blue">Active [98.2%]</p>
+            </div>
+          </div>
+          <p className="text-[9px] font-mono text-jarvis-blue/20 uppercase">Property of Stark Industries &copy; 2026</p>
+        </footer>
       </div>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 2px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(14, 165, 233, 0.05);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(14, 165, 233, 0.2);
+        }
+      `}</style>
     </main>
   );
 }
